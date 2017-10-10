@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?> 
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+<metadata>
+<id>AssistDeploy</id>
+<version>1.3.0.3</version>
+<authors>SabinIO</authors>
+<description>SSIS Deploy PowerShell Module</description>
+</metadata>
+<files>
+<file src="RunSyncRun.psd1"/>
+<file src="RunSyncRun.psm1"/>
+<file src="readme.md"/>
+<file src="Functions\ConnectSsasServer.ps1" target="Functions"/>
+<file src="Functions\GetConnectionString.ps1" target="Functions"/>
+<file src="Functions\GetSsasDatabase.ps1" target="Functions"/>
+<file src="Functions\InvokeDatabaseSync.ps1" target="Functions"/>
+<file src="Functions\RestoreConnectionString.ps1" target="Functions"/>
+<file src="Functions\SetAccountToSyncRole.ps1" target="Functions"/>
+<file src="Functions\SetSyncRole.ps1" target="Functions"/>
+<file src="Functions\SetSyncRolePermissions.ps1" target="Functions"/>
+<file src="Functions\StartDatabaseSync.ps1" target="Functions"/>
+<file src="Functions\TestDatabaseExists.ps1" target="Functions"/>
+<file src="Functions\TestFreeDiskSpace.ps1" target="Functions"/>
+</files>
+</package>
