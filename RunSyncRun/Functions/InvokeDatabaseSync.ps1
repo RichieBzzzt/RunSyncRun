@@ -1,10 +1,4 @@
-# database is an optional parameter
-# if not included then script will run for all databases on source instance
-# run for specific databases by including a comma separated list of names 
-# example syncCubes.ps1 -sourceInstance "olap01" -targetInstance "olap02" -syncAccount "ad1\sql_analysis" -Database "ADWORKS,ADWORKSDW" -Drop
-# you can include just one database name
-# drop is also optional parameter; if disk space not sufficient for 2 copies of db then it will drop the target database
-# full explanation of how drop works in comments below
+
 Function Invoke-DatabaseSync {
     [CmdletBinding()]
     param(
@@ -73,7 +67,6 @@ Function Invoke-DatabaseSync {
                 Restore-ConnectionString -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -dataSourceName $DataSourceName -ConnectionString $targetConnectionString
             }
         }
-        # if databases were not dropped then all roles/members and permissions are as they were
         if ($restore) {
             Restore-DatabaseRoles -ssasServer $targetsvr -ssasDatabase $database -roles $targetRoles
            

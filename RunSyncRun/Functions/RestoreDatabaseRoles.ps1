@@ -12,7 +12,7 @@ Function Restore-DatabaseRoles {
                 $exists.Roles.Add($restoreRole)
                 $restoreRole.Update() | Out-Null
                 foreach ($member in $role.members) {
-                    "$(Get-Date):      Adding " + $($member.Name) + " into the role " + $restoreRole
+                    Write-Verbose "$(Get-Date): Adding $($member.Name) into the role $restoreRole" -Verbose
                     $restoreRole.Members.Add($member.Name) | Out-Null
                     $restoreRole.Update() | Out-Null
                 }
