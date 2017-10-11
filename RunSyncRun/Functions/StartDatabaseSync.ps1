@@ -29,6 +29,6 @@ Function Start-DatabaseSync {
     catch {
         throw $_.Exception
     }
-    "$(Get-Date): Sync Complete for $sourceDB  from $sourcesvr to $targetsvr"
+    Write-Verbose "$(Get-Date): Sync Complete for $sourceDB  from $sourcesvr to $targetsvr" -Verbose
 
 }

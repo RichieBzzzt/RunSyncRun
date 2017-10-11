@@ -1,19 +1,25 @@
 Function Restore-ConnectionString {
     param(
-        $ssasInstance,
+        $ssasServer,
         $ssasDatabase,
         $DataSourceName,
         $ConnectionString
     )
-    $newTargetSvr = Connect-SsasServer -SsasServer $ssasInstance
-    $newTargetDB = Get-SsasDatabase -ssasServer $newTargetSvr -SsasDatabase $ssasDatabase
-    $tds = $newTargetDB.DataSources.FindByName($DataSourceName)
-    $tds.ConnectionString = $ConnectionString
-    try{
-    $tds.Update()
+    $exists = Test-DatabaseExists -ssasServer $ssasServer -ssasDatabase $ssasDatabase
+    if ($null -ne $exists) {
+        $DataSource = $exists.DataSources.FindByName($DataSourceName)
+        if ($null -ne $ConnectionString) {
+            try {
+                $DataSource.ConnectionString = $ConnectionString
+                $DataSource.Update()
+                Write-Verbose "$(Get-Date): datasource updated for $exists to $ConnectionString" -Verbose
+            }
+            catch {
+                throw $_.Exception
+            }
+        }
     }
-    catch{
-        throw $_.Exception
+    else {
+        Write-Verbose "ConnectionString is null. Not updated." -Verbose
     }
-    Write-Verbose "$(Get-Date):      datasource updated for $newtargetdb to $ConnectionString" -Verbose
 }

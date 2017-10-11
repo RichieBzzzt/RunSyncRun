@@ -27,9 +27,10 @@ Function Invoke-DatabaseSync {
         [Parameter(Position = 8)]
         [switch] $Drop,
         [Parameter(Position = 9)]
-        [switch] $chkdsk,
-        [Parameter(Position = 10)]
-        [switch] $restore
+        [switch] $restore#,        
+        # [Parameter(Position = 10)]
+        # [switch] $chkdsk
+    
         
     )
  
@@ -38,13 +39,15 @@ Function Invoke-DatabaseSync {
     $sourcesvr = Connect-SsasServer -ssasServer $sourceInstance
     $targetsvr = Connect-SsasServer -ssasServer $targetInstance
     $db = Get-ssasDatabase -ssasServer $sourcesvr -SsasDatabase $database
+    $skip = 0
  
     foreach ($sourceDB in $db) {
-        Write-Verbose "$(Get-Date):      *** Running Sync Script for $sourceDB ***" -Verbose
-        $skip = 0
+        Write-Verbose "$(Get-Date): *** Running Sync Script for $sourceDB ***" -Verbose
+        $targetSsasDatabase = $null
+        $targetConnectionString = $null
         $targetSsasDatabase = Get-ssasDatabase -ssasServer $targetsvr -ssasDatabase $database
         if ($restore) {
-            $targetConnectionString = Get-ConnectionString -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -dataSourceName $DataSourceName
+            $targetConnectionString = Backup-ConnectionString -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -dataSourceName $DataSourceName
         }
         Set-SyncRole -SsasDatabase $sourceDB -syncRole $rolename
         Set-SyncRolePermissions -SsasDatabase $sourceDB -syncRole $rolename
@@ -53,85 +56,56 @@ Function Invoke-DatabaseSync {
         # if ($chkdsk) {
         #     Test-FreeDiskSpace -sourcesvr $sourcesvr -sourceDB $sourceDB -targetsvr $targetsvr -targetdb $targetDB
         # }
-
-
-
-        # if ($Drop.IsPresent -and - $targetdb -ne $null) {
-        #     $targetDB = $targetsvr.Databases.FindByName($sourceDB.name)
-        #     [Microsoft.AnalysisServices.Role[]] $targetroleArray = @()
-        #     foreach ($targetrole in $targetDB.Roles) {
-        #         $targetroleArray += [Microsoft.AnalysisServices.Role[]] $targetrole
- 
-        #         foreach ($targetmember in $targetrole.members) {}
-        #     }
-        #     $targetDBpermissionCollection = @()
- 
-        #     foreach ($targetDBpermission in $targetDB.DatabasePermissions) {
-        #         $targetDBpermission
-        #         $targetDBpermissionCollection += $targetDBpermission
-        #     }
-        #     Write-Verbose "$(Get-Date): Dropping $targetDB ..." -Verbose
-        #     $targetDB.Drop()
-        #     Write-Verbose "$(Get-Date): $targetDB dropped" -Verbose
-        # }
-
-        # check the sync template as there are some settings you can alter in the template, such as copying permissions from source and compression etc
-        if ($skip -eq 0) {
-            Start-DatabaseSync -sourcedb $sourceDB -sourcesvr $sourcesvr -targetsvr $targetsvr -synchroniseSecuritySetting $synchroniseSecuritySetting -applyCompressionSetting $applyCompressionSetting
-    
-            if ($restore) {
-                if ($targetSsasDatabase -ne $null) {
-                    Restore-ConnectionString -ssasInstance $targetInstance -ssasDatabase $database -dataSourceName $DataSourceName -ConnectionString $targetConnectionString
-                }
-            }
-            # if databases were not dropped then all roles/members and permissions are as they were
-            if ($Drop.IsPresent -and $targetSsasDatabase -ne $null) {
-                foreach ($tr in $targetroleArray) {
-                    $newTargetSvr = new-Object Microsoft.AnalysisServices.Server
-                    $newTargetSvr.Connect($targetInstance)
-                    $newTargetDB = $newTargetSvr.Databases.FindByName($targetDB)
-                    $newroleToCreate = new-Object([Microsoft.AnalysisServices.Role])($tr)
-                    $newTargetDB.Roles.Add($newroleToCreate)
-                    $newroleToCreate.Update() | Out-Null
-                    $r = $targetDB.Roles.FindByName($tr)
- 
-                    foreach ($tm in $r.Members) {
-                        "$(Get-Date):      Adding " + $tm.Name + " into the role " + $newRoleToCreate
-                        $newMem = New-Object Microsoft.AnalysisServices.RoleMember($tm.name)
-                        $newroletocreate.Members.Add($newMem) | Out-Null
-                        $newroleToCreate.Update() | Out-Null
-                    }
-                }
-                foreach ($newTargetDBpermission in $targetDBpermissionCollection) {
-                    $newTargetDBperm = $null
-                    if ($newTargetDBpermission.Read -ne $null) {
-                        "$(Get-Date): Adding read permissions to " + $newTargetDBpermission.Role.Name + " on $newTargetSvr $newtargetDB"
-                        if ($newTargetDBperm -eq $null) {
-                            $newTargetDBperm = $NewTargetDB.DatabasePermissions.Add($newTargetDBpermission.Role.Name)
-                        }
-                        $NewTargetDBPerm.Read = [Microsoft.AnalysisServices.ReadAccess]::Allowed
-                    }
-                    if ($newTargetDBpermission.Administer -eq $true ) {
-                        "$(Get-Date): Adding admin permissions to " + $newTargetDBpermission.Role.Name + " on $newTargetSvr $newtargetDB"
-                        if ($newTargetDBperm -eq $null) {
-                            $newTargetDBperm = $NewTargetDB.DatabasePermissions.Add($newTargetDBpermission.Role.Name)
-                        }
-                        $NewTargetDBPerm.Administer = [Microsoft.AnalysisServices.ReadAccess]::Allowed
-                    }
-                                     
-                    if ($newTargetDBpermission.Process -eq $true) {
-                        "$(Get-Date):      Adding process permissions to " + $newTargetDBpermission.Role.Name + " on $newTargetSvr $newtargetDB"
-                        if ($newTargetDBperm -eq $null) {
-                            $newTargetDBperm = $NewTargetDB.DatabasePermissions.Add($newTargetDBpermission.Role.Name)
-                        }
-                        $NewTargetDBPerm.Process = [Microsoft.AnalysisServices.ReadAccess]::Allowed
-                    }
-                    if ($newTargetDBperm -ne $null) {
-                        $NewTargetDBPerm.Update()
-                    }                           
-                }
-            }              
+        if ($restore) {
+            $targetRoles = Backup-DatabaseRoles -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase
+            Write-host  $targetRoles -ForegroundColor Green
+            Write-Host $targetRoles.Members.Name -BackgroundColor DarkCyan
+            $targetPermissions = Backup-DatabasePermissions -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase
+            Write-Host $targetPermissions -ForegroundColor Green
         }
-        "$(Get-Date):      Sync Script Completed for $sourceDB"
+        if ($drop) {
+            Remove-SsasDatabase -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase
+        }
+        Start-DatabaseSync -sourcedb $sourceDB -sourcesvr $sourcesvr -targetsvr $targetsvr -synchroniseSecuritySetting $synchroniseSecuritySetting -applyCompressionSetting $applyCompressionSetting
+        $targetsvr.Refresh()
+        if ($restore) {
+            if ($targetConnectionString -ne $null) {
+                Restore-ConnectionString -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -dataSourceName $DataSourceName -ConnectionString $targetConnectionString
+            }
+        }
+        # if databases were not dropped then all roles/members and permissions are as they were
+        if ($restore) {
+            Restore-DatabaseRoles -ssasServer $targetsvr -ssasDatabase $database -roles $targetRoles
+           
+            # foreach ($newTargetDBpermission in $targetMembers) {
+            #     $newTargetDBperm = $null
+            #     if ($newTargetDBpermission.Read -ne $null) {
+            #         "$(Get-Date): Adding read permissions to " + $newTargetDBpermission.Role.Name + " on $newTargetSvr $newtargetDB"
+            #         if ($newTargetDBperm -eq $null) {
+            #             $newTargetDBperm = $NewTargetDB.DatabasePermissions.Add($newTargetDBpermission.Role.Name)
+            #         }
+            #         $NewTargetDBPerm.Read = [Microsoft.AnalysisServices.ReadAccess]::Allowed
+            #     }
+            #     if ($newTargetDBpermission.Administer -eq $true ) {
+            #         "$(Get-Date): Adding admin permissions to " + $newTargetDBpermission.Role.Name + " on $newTargetSvr $newtargetDB"
+            #         if ($newTargetDBperm -eq $null) {
+            #             $newTargetDBperm = $NewTargetDB.DatabasePermissions.Add($newTargetDBpermission.Role.Name)
+            #         }
+            #         $NewTargetDBPerm.Administer = [Microsoft.AnalysisServices.ReadAccess]::Allowed
+            #     }
+                                     
+            #     if ($newTargetDBpermission.Process -eq $true) {
+            #         "$(Get-Date):      Adding process permissions to " + $newTargetDBpermission.Role.Name + " on $newTargetSvr $newtargetDB"
+            #         if ($newTargetDBperm -eq $null) {
+            #             $newTargetDBperm = $NewTargetDB.DatabasePermissions.Add($newTargetDBpermission.Role.Name)
+            #         }
+            #         $NewTargetDBPerm.Process = [Microsoft.AnalysisServices.ReadAccess]::Allowed
+            #     }
+            #     if ($newTargetDBperm -ne $null) {
+            #         $NewTargetDBPerm.Update()
+            #     }                           
+            # }
+        }              
+        Write-Verbose "$(Get-Date):      Sync Script Completed for $sourceDB" -Verbose
     }
 }
