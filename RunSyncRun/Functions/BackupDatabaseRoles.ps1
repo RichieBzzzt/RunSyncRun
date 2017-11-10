@@ -8,8 +8,15 @@ Function Backup-DatabaseRoles {
         try {
             [Microsoft.AnalysisServices.Role[]] $roleArray = @()
             foreach ($role in $ssasDatabase.Roles) {
-                Write-Verbose $role
                 $roleArray += [Microsoft.AnalysisServices.Role[]] $role
+            }
+            $roleArray.Members.Count | Out-Null
+            if ($roleArray.Count -gt 0) {
+                $msg = "Roles saved - {0} " -f ($roleArray -join " `n")
+                Write-Verbose $msg -Verbose
+            }
+            else {
+                Write-Verbose "No roles to save." -Verbose
             }
             return $roleArray
         }

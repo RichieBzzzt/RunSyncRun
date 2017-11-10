@@ -27,48 +27,57 @@ Function Invoke-DatabaseSync {
     
         
     )
- 
+    Write-Verbose "$(Get-Date): Starting up..." -Verbose
     [void][System.reflection.Assembly]::LoadWithPartialName("Microsoft.AnalysisServices")
-    
+    Write-Verbose "Connecting to $sourcesvr as source. This is where we will be syncing FROM."
     $sourcesvr = Connect-SsasServer -ssasServer $sourceInstance
+    Write-Verbose "Connecting to $sourcesvr as target. This is where we will be syncing TO."
     $targetsvr = Connect-SsasServer -ssasServer $targetInstance
     $db = Get-ssasDatabase -ssasServer $sourcesvr -SsasDatabase $database
-    $skip = 0
- 
     foreach ($sourceDB in $db) {
-        Write-Verbose "$(Get-Date): *** Running Sync Script for $sourceDB ***" -Verbose
         $targetSsasDatabase = $null
         $targetConnectionString = $null
+        Write-Verbose "Getting SSAS Database as 'target'" -Verbose
         $targetSsasDatabase = Get-ssasDatabase -ssasServer $targetsvr -ssasDatabase $database
         if ($restore) {
+            Write-Verbose "Restore switch was used. Backing up connection string." -Verbose
             $targetConnectionString = Backup-ConnectionString -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -dataSourceName $DataSourceName
         }
+        Write-Verbose "Checking if role $rolename exists on $sourceDB. If not will create." -Verbose
         Set-SyncRole -SsasDatabase $sourceDB -syncRole $rolename
+        Write-Verbose "Checking if role $rolename has correct permisisons on $sourceDB. If not will add." -Verbose
         Set-SyncRolePermissions -SsasDatabase $sourceDB -syncRole $rolename
+        Write-Verbose "Cehcking if $syncAccount is member of role $rolename on $sourceDB. If not will add." -Verbose
         Set-AccountToSyncRole -SsasDatabase $sourceDB -account $syncAccount -syncRole $rolename
         #TODO - Test-FreeDiskSpace is not working
         # if ($chkdsk) {
         #     Test-FreeDiskSpace -sourcesvr $sourcesvr -sourceDB $sourceDB -targetsvr $targetsvr -targetdb $targetDB
         # }
         if ($restore) {
+            Write-Verbose "Restore switch was used. Backing up database roles." -Verbose
             $targetRoles = Backup-DatabaseRoles -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase
-            Write-host  $targetRoles -ForegroundColor Green
-            Write-Host $targetRoles.Members.Name -BackgroundColor DarkCyan
             $targetPermissions = Backup-DatabasePermissions -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase
-            Write-Host $targetPermissions -ForegroundColor Green
         }
         if ($drop) {
+            Write-Verbose "Drop switch was used. $targetSsasDatabase on $targetsvr will be dropped." -Verbose
             Remove-SsasDatabase -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase
         }
         Start-DatabaseSync -sourcedb $sourceDB -sourcesvr $sourcesvr -targetsvr $targetsvr -synchroniseSecuritySetting $synchroniseSecuritySetting -applyCompressionSetting $applyCompressionSetting
+        Write-Verbose "If restore switch was used then will run extra tasks" -Verbose
         $targetsvr.Refresh()
         if ($restore) {
             if ($targetConnectionString -ne $null) {
                 Restore-ConnectionString -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -dataSourceName $DataSourceName -ConnectionString $targetConnectionString
             }
-        }
-        if ($restore) {
-            Restore-DatabaseRoles -ssasServer $targetsvr -ssasDatabase $database -roles $targetRoles
+            Write-Verbose "Restore switch was used." -Verbose
+            if ($targetRoles.Count -gt 0) {
+                Write-Verbose "Restoring database roles" -Verbose
+                Restore-DatabaseRoles -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -roles $targetRoles
+            }
+            if ($targetPermissions.Count -gt 0){
+                Write-Verbose "Restoring database permissions" -Verbose
+                Restore-DatabasePermissions -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -permissions $targetPermissions
+            }
            
             # foreach ($newTargetDBpermission in $targetMembers) {
             #     $newTargetDBperm = $null

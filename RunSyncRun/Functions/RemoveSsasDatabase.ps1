@@ -7,8 +7,9 @@ Function Remove-SsasDatabase {
     $exists = Test-DatabaseExists -ssasServer $ssasServer -ssasDatabase $ssasDatabase
     if ($null -ne $exists) {
         try {
-            Write-Verbose "Removing $($ssasDatabase)." -Verbose
+            Write-Verbose "$(Get-Date): Dropping $($ssasDatabase)." -Verbose
             $ssasDatabase.Drop()
+            Write-Verbose "$(Get-Date): $($ssasDatabase) dropped." -Verbose
         }
         catch {
             throw $_.Exception

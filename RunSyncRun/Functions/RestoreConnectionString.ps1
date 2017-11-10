@@ -11,7 +11,7 @@ Function Restore-ConnectionString {
         if ($null -ne $ConnectionString) {
             try {
                 $DataSource.ConnectionString = $ConnectionString
-                $DataSource.Update()
+                $DataSource.Update() | Out-Null
                 Write-Verbose "$(Get-Date): datasource updated for $exists to $ConnectionString" -Verbose
             }
             catch {

@@ -6,6 +6,7 @@ Function Connect-SsasServer {
     $s = new-Object Microsoft.AnalysisServices.Server
     try {
         $s.Connect($ssasServer)
+        Write-Verbose "Successfully connected to $ssasServer" -Verbose
         return $s
     }
     catch {

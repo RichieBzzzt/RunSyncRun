@@ -15,6 +15,8 @@
 <file src="Functions\GetSsasDatabase.ps1" target="Functions"/>
 <file src="Functions\InvokeDatabaseSync.ps1" target="Functions"/>
 <file src="Functions\RestoreConnectionString.ps1" target="Functions"/>
+<file src="Functions\RestoreDatabasePermissions.ps1" target="Functions"/>
+<file src="Functions\RestoreDatabaseRoles.ps1" target="Functions"/>
 <file src="Functions\SetAccountToSyncRole.ps1" target="Functions"/>
 <file src="Functions\SetSyncRole.ps1" target="Functions"/>
 <file src="Functions\SetSyncRolePermissions.ps1" target="Functions"/>
