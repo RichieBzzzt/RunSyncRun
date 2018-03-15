@@ -4,20 +4,20 @@ Function Set-AccountToSyncRole {
         $account,
         $syncRole
     )
+    $r = $SsasDatabase.Roles.FindByName($syncrole)
     $foundMember = $null
-    foreach ($member in $role.Members) {
+    foreach ($member in $r.Members) {
         if ($member.Name -eq $Account) {
             $foundMember = $member
         }
     }
-    $r = $SsasDatabase.Roles.FindByName($syncrole)
     If ($foundMember -eq $null) {
-        "$(Get-Date): Adding access to " + $Account
+        Write-Verbose "$(Get-Date): Adding access to $Account"  -Verbose
         $newMem = New-Object Microsoft.AnalysisServices.RoleMember($Account)
         $r.Members.Add($newMem)
         $r.Update()
     }
     else {
-        "$(Get-Date): User " + $syncAccount + " already added to role $r"
+        Write-Verbose "$(Get-Date): User $syncAccount already added to role $r" -Verbose
     }
 }

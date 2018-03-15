@@ -17,7 +17,7 @@ Function Start-DatabaseSync {
 <SynchronizeSecurity>@@SynchronizeSecurity@@</SynchronizeSecurity>
 <ApplyCompression>@@ApplyCompression@@</ApplyCompression>
 </Synchronize>'       
-    $syncxmla = $syncxmla.Replace("@@DatabaseID@@", $sourcedb)
+    $syncxmla = $syncxmla.Replace("@@DatabaseID@@", $sourcedb.id)
     $syncxmla = $syncxmla.Replace("@@Source@@", $sourcesvr)
     $syncxmla = $syncxmla.Replace("@@SynchronizeSecurity@@", $synchroniseSecuritySetting)
     $syncxmla = $syncxmla.Replace("@@ApplyCompression@@", $applyCompressionSetting)
@@ -29,6 +29,6 @@ Function Start-DatabaseSync {
     catch {
         throw $_.Exception
     }
-    "$(Get-Date): Sync Complete for $sourceDB  from $sourcesvr to $targetsvr"
+    Write-Verbose "$(Get-Date): Sync Complete for $sourceDB from $sourcesvr to $targetsvr" -Verbose
 
 }

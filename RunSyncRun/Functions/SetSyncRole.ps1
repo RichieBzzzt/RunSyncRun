@@ -9,9 +9,10 @@ Function Set-SyncRole {
         $roleToCreate = new-Object([Microsoft.AnalysisServices.Role])($syncRole)
         $SsasDatabase.Roles.Add($roleToCreate)
         $roleToCreate.Update()
-        Write-Verbose "$(Get-Date): role $syncRole created on $SsasDatabase" -Verbose  
+        Write-Verbose "$(Get-Date): role $role created on $SsasDatabase" -Verbose  
     }  
-    # check if service account that runs target instance is a member of the role
-    # if it is not then we will add it to role
-    # this is necessary to ensure that the databases can be synced
+    else{
+        Write-Verbose "$(Get-Date): role $role already exists on $SsasDatabase" -Verbose
+    }
+    Return $role
 }
