@@ -21,18 +21,16 @@ Function Invoke-DatabaseSync {
         [Parameter(Position = 8)]
         [switch] $Drop,
         [Parameter(Position = 9)]
-        [switch] $restore#,        
-        # [Parameter(Position = 10)]
-        # [switch] $chkdsk
-    
-        
+        [switch] $restore
     )
+    
     Write-Verbose "$(Get-Date): Starting up..." -Verbose
-    [void][System.reflection.Assembly]::LoadWithPartialName("Microsoft.AnalysisServices")
-    Write-Verbose "Connecting to $sourcesvr as source. This is where we will be syncing FROM."
+    Add-Type -Path "C:\Users\richardlee\Downloads\microsoft.analysisservices.unofficial.13.0.4001.1\lib\Microsoft.AnalysisServices.dll"
     $sourcesvr = Connect-SsasServer -ssasServer $sourceInstance
-    Write-Verbose "Connecting to $sourcesvr as target. This is where we will be syncing TO."
+    Write-Verbose "Connecting to $sourcesvr as source. This is where we will be syncing FROM."
     $targetsvr = Connect-SsasServer -ssasServer $targetInstance
+    Write-Verbose "Connecting to $targetsvr as target. This is where we will be syncing TO."
+
     $db = Get-ssasDatabase -ssasServer $sourcesvr -SsasDatabase $database
     foreach ($sourceDB in $db) {
         $targetSsasDatabase = $null
@@ -44,15 +42,11 @@ Function Invoke-DatabaseSync {
             $targetConnectionString = Backup-ConnectionString -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -dataSourceName $DataSourceName
         }
         Write-Verbose "Checking if role $rolename exists on $sourceDB. If not will create." -Verbose
-        Set-SyncRole -SsasDatabase $sourceDB -syncRole $rolename
-        Write-Verbose "Checking if role $rolename has correct permisisons on $sourceDB. If not will add." -Verbose
-        Set-SyncRolePermissions -SsasDatabase $sourceDB -syncRole $rolename
-        Write-Verbose "Cehcking if $syncAccount is member of role $rolename on $sourceDB. If not will add." -Verbose
+        $syncRole = Set-SyncRole -SsasDatabase $sourceDB -syncRole $rolename
+        Write-Verbose "Checking if role $($syncRole.Name) has correct permisisons on $sourceDB. If not will add." -Verbose
+        Set-SyncRolePermissions -SsasDatabase $sourceDB -syncRole $syncRole
+        Write-Verbose "Checking if $syncAccount is member of role $($syncRole.Name) on $sourceDB. If not will add." -Verbose
         Set-AccountToSyncRole -SsasDatabase $sourceDB -account $syncAccount -syncRole $rolename
-        #TODO - Test-FreeDiskSpace is not working
-        # if ($chkdsk) {
-        #     Test-FreeDiskSpace -sourcesvr $sourcesvr -sourceDB $sourceDB -targetsvr $targetsvr -targetdb $targetDB
-        # }
         if ($restore) {
             Write-Verbose "Restore switch was used. Backing up database roles." -Verbose
             $targetRoles = Backup-DatabaseRoles -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase
@@ -78,7 +72,7 @@ Function Invoke-DatabaseSync {
                 Write-Verbose "Restoring database permissions" -Verbose
                 Restore-DatabasePermissions -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -permissions $targetPermissions
             }
-           
+            
             # foreach ($newTargetDBpermission in $targetMembers) {
             #     $newTargetDBperm = $null
             #     if ($newTargetDBpermission.Read -ne $null) {

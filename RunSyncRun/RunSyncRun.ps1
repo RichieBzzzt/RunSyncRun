@@ -1,3 +1,3 @@
-Import-Module "C:\Users\SQLTraining\source\repos\RunSyncRun\RunSyncRun" -Force
+Import-Module ".\RunSyncRun" -Force
 Clear-Host
-Invoke-DatabaseSync -sourceInstance ".\hh" -targetInstance "." -syncAccount "SQLTraining" -rolename "SyncMeBaby" -database "WideWorldImportersMultidimensionalCube" -DataSourceName "WideWorldImportersDW" -Drop -synchroniseSecuritySetting "IgnoreSecurity" -applyCompressionSetting "true" -restore 
+Invoke-DatabaseSync -sourceInstance ".\aiui" -targetInstance ".\otoh" -syncAccount "richardlee" -rolename "SyncMeBaby" -database "WideWorldImportersMultidimensionalCube" -DataSourceName "WideWorldImportersDW" -synchroniseSecuritySetting "IgnoreSecurity" -applyCompressionSetting "true" #-restore #-drop
