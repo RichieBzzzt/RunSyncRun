@@ -2,8 +2,10 @@
 Function Get-SsasDatabase {
     param (
         $ssasServer,
-        $SsasDatabase
+        $SsasDatabase,
+        $actionOnError
     )
+    $ErrorActionPreference = $actionOnError
     [Microsoft.AnalysisServices.Database[]] $ssasdb = @()
     if (!$SsasDatabase) {
         $ssasdb = $ssasServer.Databases

@@ -5,21 +5,15 @@ Function Restore-ConnectionString {
         $DataSourceName,
         $ConnectionString
     )
-    $exists = Test-DatabaseExists -ssasServer $ssasServer -ssasDatabase $ssasDatabase
-    if ($null -ne $exists) {
-        $DataSource = $exists.DataSources.FindByName($DataSourceName)
-        if ($null -ne $ConnectionString) {
-            try {
-                $DataSource.ConnectionString = $ConnectionString
-                $DataSource.Update() | Out-Null
-                Write-Verbose "$(Get-Date): datasource updated for $exists to $ConnectionString" -Verbose
-            }
-            catch {
-                throw $_.Exception
-            }
+    $DataSource = $exists.DataSources.FindByName($DataSourceName)
+    if ($null -ne $ConnectionString) {
+        try {
+            $DataSource.ConnectionString = $ConnectionString
+            $DataSource.Update() | Out-Null
+            Write-Verbose "$(Get-Date): datasource updated for $exists to $ConnectionString" -Verbose
         }
-    }
-    else {
-        Write-Verbose "ConnectionString is null. Not updated." -Verbose
+        catch {
+            throw $_.Exception
+        }
     }
 }

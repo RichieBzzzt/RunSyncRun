@@ -19,11 +19,17 @@ Function Invoke-DatabaseSync {
         [Parameter(Position = 7)]
         [string[]] $database,
         [Parameter(Position = 8)]
-        [switch] $Drop,
-        [Parameter(Position = 9)]
-        [switch] $restore
+        [switch] $restoreConnectionString
     )
-    
+    $validSynchroniseSecuritySetting = @("CopyAll", "SkipMembership", "IgnoreSecurity")
+    if ($synchroniseSecuritySetting -notin $validSynchroniseSecuritySetting) {
+        Write-Error ("$synchroniseSecuritySetting -does not match any of the following - {0}" -f ($validSynchroniseSecuritySetting -join ", "))
+        Throw
+    }
+    if ($ApplyCompressionSetting -notin ("true", "false")) {
+        Write-Error ("$ApplyCompressionSetting must be either 'true' or 'false'.")
+        Throw
+    }
     Write-Verbose "$(Get-Date): Starting up..." -Verbose
     Add-Type -Path "C:\Users\richardlee\Downloads\microsoft.analysisservices.unofficial.13.0.4001.1\lib\Microsoft.AnalysisServices.dll"
     $sourcesvr = Connect-SsasServer -ssasServer $sourceInstance
@@ -35,10 +41,9 @@ Function Invoke-DatabaseSync {
     foreach ($sourceDB in $db) {
         $targetSsasDatabase = $null
         $targetConnectionString = $null
-        Write-Verbose "Getting SSAS Database as 'target'" -Verbose
-        $targetSsasDatabase = Get-ssasDatabase -ssasServer $targetsvr -ssasDatabase $database
-        if ($restore) {
-            Write-Verbose "Restore switch was used. Backing up connection string." -Verbose
+        if ($restoreConnectionString) {
+            Write-Verbose "restoreConnectionString switch was used. Backing up connection string." -Verbose
+            $targetSsasDatabase = Get-ssasDatabase -ssasServer $targetsvr -ssasDatabase $database -ActionOnError "Continue"
             $targetConnectionString = Backup-ConnectionString -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -dataSourceName $DataSourceName
         }
         Write-Verbose "Checking if role $rolename exists on $sourceDB. If not will create." -Verbose
@@ -47,60 +52,12 @@ Function Invoke-DatabaseSync {
         Set-SyncRolePermissions -SsasDatabase $sourceDB -syncRole $syncRole
         Write-Verbose "Checking if $syncAccount is member of role $($syncRole.Name) on $sourceDB. If not will add." -Verbose
         Set-AccountToSyncRole -SsasDatabase $sourceDB -account $syncAccount -syncRole $rolename
-        if ($restore) {
-            Write-Verbose "Restore switch was used. Backing up database roles." -Verbose
-            $targetRoles = Backup-DatabaseRoles -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase
-            $targetPermissions = Backup-DatabasePermissions -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase
-        }
-        if ($drop) {
-            Write-Verbose "Drop switch was used. $targetSsasDatabase on $targetsvr will be dropped." -Verbose
-            Remove-SsasDatabase -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase
-        }
         Start-DatabaseSync -sourcedb $sourceDB -sourcesvr $sourcesvr -targetsvr $targetsvr -synchroniseSecuritySetting $synchroniseSecuritySetting -applyCompressionSetting $applyCompressionSetting
-        Write-Verbose "If restore switch was used then will run extra tasks" -Verbose
         $targetsvr.Refresh()
-        if ($restore) {
+        if ($restoreConnectionString) {
             if ($targetConnectionString -ne $null) {
-                Restore-ConnectionString -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -dataSourceName $DataSourceName -ConnectionString $targetConnectionString
+                restoreConnectionString-ConnectionString -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -dataSourceName $DataSourceName -ConnectionString $targetConnectionString
             }
-            Write-Verbose "Restore switch was used." -Verbose
-            if ($targetRoles.Count -gt 0) {
-                Write-Verbose "Restoring database roles" -Verbose
-                Restore-DatabaseRoles -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -roles $targetRoles
-            }
-            if ($targetPermissions.Count -gt 0){
-                Write-Verbose "Restoring database permissions" -Verbose
-                Restore-DatabasePermissions -ssasServer $targetsvr -ssasDatabase $targetSsasDatabase -permissions $targetPermissions
-            }
-            
-            # foreach ($newTargetDBpermission in $targetMembers) {
-            #     $newTargetDBperm = $null
-            #     if ($newTargetDBpermission.Read -ne $null) {
-            #         "$(Get-Date): Adding read permissions to " + $newTargetDBpermission.Role.Name + " on $newTargetSvr $newtargetDB"
-            #         if ($newTargetDBperm -eq $null) {
-            #             $newTargetDBperm = $NewTargetDB.DatabasePermissions.Add($newTargetDBpermission.Role.Name)
-            #         }
-            #         $NewTargetDBPerm.Read = [Microsoft.AnalysisServices.ReadAccess]::Allowed
-            #     }
-            #     if ($newTargetDBpermission.Administer -eq $true ) {
-            #         "$(Get-Date): Adding admin permissions to " + $newTargetDBpermission.Role.Name + " on $newTargetSvr $newtargetDB"
-            #         if ($newTargetDBperm -eq $null) {
-            #             $newTargetDBperm = $NewTargetDB.DatabasePermissions.Add($newTargetDBpermission.Role.Name)
-            #         }
-            #         $NewTargetDBPerm.Administer = [Microsoft.AnalysisServices.ReadAccess]::Allowed
-            #     }
-                                     
-            #     if ($newTargetDBpermission.Process -eq $true) {
-            #         "$(Get-Date):      Adding process permissions to " + $newTargetDBpermission.Role.Name + " on $newTargetSvr $newtargetDB"
-            #         if ($newTargetDBperm -eq $null) {
-            #             $newTargetDBperm = $NewTargetDB.DatabasePermissions.Add($newTargetDBpermission.Role.Name)
-            #         }
-            #         $NewTargetDBPerm.Process = [Microsoft.AnalysisServices.ReadAccess]::Allowed
-            #     }
-            #     if ($newTargetDBperm -ne $null) {
-            #         $NewTargetDBPerm.Update()
-            #     }                           
-            # }
         }              
         Write-Verbose "$(Get-Date):      Sync Script Completed for $sourceDB" -Verbose
     }
